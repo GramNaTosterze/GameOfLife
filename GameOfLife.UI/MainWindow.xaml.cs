@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using GameOfLife;
 using Brush = System.Windows.Media.Brush;
@@ -104,27 +105,67 @@ namespace GameOfLife.UI
 
             var st = new ScaleTransform();
             GameGrid.RenderTransform = st;
+
             GameGrid.MouseWheel += (_, e) =>
             {
-                st.CenterX = e.GetPosition(GameGrid).X;
-                st.CenterY = e.GetPosition(GameGrid).Y;
+                var posX = e.GetPosition(GameGrid).X;
+                var posY = e.GetPosition(GameGrid).Y;
 
+                DoubleAnimation an;
                 if (e.Delta > 0)
                 {
-                    st.ScaleX *= 2;
-                    st.ScaleY *= 2;
+                    an = new DoubleAnimation
+                    {
+                        From = st.ScaleX,
+                        To = st.ScaleX * 2,
+                        Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+                    };
+
+                    //st.ScaleX *= 2;
+                    //st.ScaleY *= 2;
                 }
                 else
                 {
-                    st.ScaleX /= 2;
-                    st.ScaleY /= 2;
-                    if (!(st.ScaleX < 1))
-                        return;
-                    st.ScaleX = 1;
-                    st.ScaleY = 1;
-                    st.CenterX = 0;
-                    st.CenterY = 0;
+                    if (!(st.ScaleX / 2 < 1))
+                    {
+                        an = new DoubleAnimation
+                        {
+                            From = st.ScaleX,
+                            To = st.ScaleX / 2,
+                            Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+                        };
+                    }
+                    else
+                    {
+                        an = new DoubleAnimation
+                        {
+                            From = st.ScaleX,
+                            To = 1,
+                            Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+                        };
+                        posX = 0;
+                        posY = 0;
+                    }
                 }
+
+                var canX = new DoubleAnimation
+                {
+                    From = st.CenterX,
+                    To = posX,
+                    Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+                };
+                var canY = new DoubleAnimation
+                {
+                    From = st.CenterY,
+                    To = posY,
+                    Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+                };
+
+                st.BeginAnimation(ScaleTransform.ScaleXProperty, an);
+                st.BeginAnimation(ScaleTransform.ScaleYProperty, an);
+
+                st.BeginAnimation(ScaleTransform.CenterXProperty, canX);
+                st.BeginAnimation(ScaleTransform.CenterYProperty, canY);
             };
             IsRoundMenuItem.Checked += (_, _) => RebindGameGrid();
             IsRoundMenuItem.Unchecked += (_, _) => RebindGameGrid();
