@@ -21,5 +21,5 @@ Additional:
 - [ ] wybór ciekawych konfiguracji np. na podstawie - https://pl.wikipedia.org/wiki/Gra_w_%C5%BCycie
 - [ ] zaimplementowanie wybranych modeli kolorowania np. https://pl.wikipedia.org/wiki/Gra_w_%C5%BCycie#Immigration lub
 - [ ] https://pl.wikipedia.org/wiki/Gra_w_%C5%BCycie#QuadLife
-- [ ] interakcja z „żywą” planszą – w trakcie rysowania (przycisnięty przycisk mysz generowanie jest przerywane, po puszczeniu przycisku myszy wznawiane)
+- [X] interakcja z „żywą” planszą – w trakcie rysowania (przycisnięty przycisk mysz generowanie jest przerywane, po puszczeniu przycisku myszy wznawiane)
   - [ ]   automat na innej siatce trójkatna/szesciokątna (ocena do negocjacji :-))

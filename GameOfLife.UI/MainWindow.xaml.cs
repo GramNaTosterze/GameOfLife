@@ -25,18 +25,38 @@ namespace GameOfLife.UI
         private bool _running = false;
         private int _scale = 100;
         private SolidColorBrush _cellFill = Brushes.White;
+        private bool _drawing = false;
 
         public MainWindow()
         {
             InitializeComponent();
 
+            var lastCell = Cell.Dead();
             GameGrid.MouseLeftButtonDown += (_, e) =>
             {
                 if (e.OriginalSource is not Shape tmp)
                     return;
                 if (tmp.DataContext is Cell cell)
+                {
                     cell.State = !cell.State;
+                    lastCell = cell;
+                }
+                _drawing = true;
             };
+            GameGrid.MouseMove += (_, e) =>
+            {
+                if (!_drawing)
+                    return;
+                if (e.OriginalSource is not Shape tmp)
+                    return;
+
+                if (tmp.DataContext is not Cell cell || cell == lastCell)
+                    return;
+                cell.State = !cell.State;
+                lastCell = cell;
+            };
+            MouseLeftButtonUp += (_, _) => _drawing = false;
+
             _timer.Elapsed += (_, _) =>
             {
                 if (_running)
