@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:GameOfLife.UI"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     
@@ -29,22 +28,22 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="File">
-                <MenuItem x:Name="SaveMenuItem" Header="Save"/>
-                <MenuItem x:Name="LoadMenuItem" Header="Load"/>
+                <MenuItem x:Name="SaveMenuItem" Header="Save" Click="SaveMenuItem_OnClick"/>
+                <MenuItem x:Name="LoadMenuItem" Header="Load" Click="LoadMenuItem_OnClick"/>
             </MenuItem>
             <MenuItem Header="Board">
-                <MenuItem Header="Clean" x:Name="CleanMenuItem"/>
-                <MenuItem Header="Random" x:Name="RandomMenuItem"/>
+                <MenuItem Header="Clean" x:Name="CleanMenuItem" Click="CleanMenuItem_OnClick"/>
+                <MenuItem Header="Random" x:Name="RandomMenuItem" Click="RandomMenuItem_OnClick"/>
             </MenuItem>
             <MenuItem Header="Render">
-                <MenuItem x:Name="IsRoundMenuItem" Header="Round Cells" IsCheckable="True"/>
+                <MenuItem x:Name="IsRoundMenuItem" Header="Round Cells" IsCheckable="True" Checked="IsRoundMenuItem_OnChecked" Unchecked="IsRoundMenuItem_OnChecked"/>
             </MenuItem>
         </Menu>
 
         <Grid ClipToBounds="True">
             <Grid Margin="10,10,216,86" ClipToBounds="True">
-                <Grid x:Name="GameGrid" />
-                <Slider x:Name="AnimationSpeedSlider" HorizontalAlignment="Right" Margin="0,0,-85,0" VerticalAlignment="Center" Width="196" Minimum="0" Maximum="400" Value="200" RenderTransformOrigin="0.5,0.5">
+                <Grid x:Name="GameGrid" MouseLeftButtonDown="GameGrid_OnMouseButtonDown" MouseMove="GameGrid_OnMouseMove" MouseWheel="GameGrid_OnMouseWheel"/>
+                <Slider x:Name="AnimationSpeedSlider" HorizontalAlignment="Right" Margin="0,0,-85,0" VerticalAlignment="Center" Width="196" Minimum="0" Maximum="400" Value="200" RenderTransformOrigin="0.5,0.5" ValueChanged="AnimationSpeedSlider_OnValueChanged">
                     <Slider.RenderTransform>
                         <TransformGroup>
                             <ScaleTransform/>
@@ -57,12 +56,12 @@
             </Grid>
 
 
-            <Button x:Name="ResizeButton" Content="Start Game" Margin="0,93,75,0" VerticalAlignment="Top" HorizontalAlignment="Right"/>
+            <Button x:Name="ResizeButton" Content="Start Game" Margin="0,93,75,0" VerticalAlignment="Top" HorizontalAlignment="Right" Click="ResizeButton_OnClick"/>
             <TextBox x:Name="GridX" Margin="0,32,110,0" TextWrapping="Wrap" Text="100" VerticalAlignment="Top" HorizontalAlignment="Right" Width="100" Height="37"/>
             <TextBox x:Name="GridY" Margin="0,32,5,0" TextWrapping="Wrap" Text="100" VerticalAlignment="Top" HorizontalAlignment="Right" Width="100" Height="37"/>
 
-            <Button x:Name="StartButton" Content="Start" Margin="0,0,0,10" VerticalAlignment="Bottom" HorizontalAlignment="Center"/>
-            <Button x:Name="NextButton" Content="Next" Margin="150,0,0,10" VerticalAlignment="Bottom" HorizontalAlignment="Center"/>
+            <Button x:Name="StartButton" Content="Start" Margin="0,0,0,10" VerticalAlignment="Bottom" HorizontalAlignment="Center" Click="StartButton_OnClick"/>
+            <Button x:Name="NextButton" Content="Next" Margin="150,0,0,10" VerticalAlignment="Bottom" HorizontalAlignment="Center" Click="NextButton_OnClick"/>
             <TextBlock x:Name="StatsTextBlock" HorizontalAlignment="Right" Margin="0,0,20,70" TextWrapping="Wrap" Text="Statistics:" VerticalAlignment="Bottom"  Height="146" Width="175"/>
         </Grid>
     </DockPanel>

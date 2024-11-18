@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
@@ -9,6 +10,7 @@ using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
 using Color = System.Windows.Media.Color;
 using MessageBox = System.Windows.MessageBox;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using Path = System.IO.Path;
 using Rectangle = System.Windows.Shapes.Rectangle;
 using ValidationResult = System.Printing.ValidationResult;
@@ -23,38 +25,17 @@ namespace GameOfLife.UI
         private Game? _game;
         private System.Timers.Timer _timer = new System.Timers.Timer(200);
         private bool _running = false;
-        private int _scale = 100;
         private SolidColorBrush _cellFill = Brushes.White;
         private bool _drawing = false;
+        private ScaleTransform _st = new ScaleTransform();
+        private Cell _lastCell = Cell.Dead();
 
         public MainWindow()
         {
             InitializeComponent();
 
-            var lastCell = Cell.Dead();
-            GameGrid.MouseLeftButtonDown += (_, e) =>
-            {
-                if (e.OriginalSource is not Shape tmp)
-                    return;
-                if (tmp.DataContext is Cell cell)
-                {
-                    cell.State = !cell.State;
-                    lastCell = cell;
-                }
-                _drawing = true;
-            };
-            GameGrid.MouseMove += (_, e) =>
-            {
-                if (!_drawing)
-                    return;
-                if (e.OriginalSource is not Shape tmp)
-                    return;
+            GameGrid.RenderTransform = _st;
 
-                if (tmp.DataContext is not Cell cell || cell == lastCell)
-                    return;
-                cell.State = !cell.State;
-                lastCell = cell;
-            };
             MouseLeftButtonUp += (_, _) => _drawing = false;
 
             _timer.Elapsed += (_, _) =>
@@ -62,137 +43,173 @@ namespace GameOfLife.UI
                 if (_running)
                     NextGeneration();
             };
-
-            StartButton.Click += (_, _) =>
-            {
-                _running = !_running;
-                StartButton.Content = _running ? "Stop" : "Start";
-            };
-            NextButton.Click += (_, _) => NextGeneration();
-
-            SaveMenuItem.Click += (_, _) =>
-            {
-                if (_game == null)
-                    return;
-                _game.Export(Path.Join(Directory.GetCurrentDirectory(), "SaveState"));
-                MessageBox.Show("Game Saved");
-            };
-            LoadMenuItem.Click += (_, _) =>
-            {
-                try
-                {
-                    _game = Game.Import(Path.Join(Directory.GetCurrentDirectory(), "SaveState"));
-                    DrawGameGrid();
-                    MessageBox.Show("Game Loaded");
-                    UpdateStats();
-                }
-                catch
-                {
-                    MessageBox.Show("Cannot Load game state");
-                }
-            };
-            CleanMenuItem.Click += (_, _) => _game?.Clean();
-            RandomMenuItem.Click += (_, _) =>
-            {
-                if (_game == null)
-                    return;
-
-                _game = Game.Rand(_game.X, _game.Y);
-                RebindGameGrid();
-            };
-            ResizeButton.Click += (_, _) =>
-            {
-                try
-                {
-                    var x = uint.Parse(GridX.Text);
-                    var y = uint.Parse(GridY.Text);
-                    if (_game == null)
-                        InitGame(x, y);
-                    else
-                        ResizeGame(x, y);
-                }
-                catch
-                {
-                    MessageBox.Show($"Grid size must be integers");
-                }
-            };
-            AnimationSpeedSlider.ValueChanged += (_, _) =>
-            {
-                _timer.Stop();
-                _timer.Interval = AnimationSpeedSlider.Maximum - AnimationSpeedSlider.Value;
-                _timer.Start();
-            };
-
-            var st = new ScaleTransform();
-            GameGrid.RenderTransform = st;
-
-            GameGrid.MouseWheel += (_, e) =>
-            {
-                var posX = e.GetPosition(GameGrid).X;
-                var posY = e.GetPosition(GameGrid).Y;
-
-                DoubleAnimation an;
-                if (e.Delta > 0)
-                {
-                    an = new DoubleAnimation
-                    {
-                        From = st.ScaleX,
-                        To = st.ScaleX * 2,
-                        Duration = new Duration(TimeSpan.FromSeconds(0.5)),
-                    };
-
-                    //st.ScaleX *= 2;
-                    //st.ScaleY *= 2;
-                }
-                else
-                {
-                    if (!(st.ScaleX / 2 < 1))
-                    {
-                        an = new DoubleAnimation
-                        {
-                            From = st.ScaleX,
-                            To = st.ScaleX / 2,
-                            Duration = new Duration(TimeSpan.FromSeconds(0.5)),
-                        };
-                    }
-                    else
-                    {
-                        an = new DoubleAnimation
-                        {
-                            From = st.ScaleX,
-                            To = 1,
-                            Duration = new Duration(TimeSpan.FromSeconds(0.5)),
-                        };
-                        posX = 0;
-                        posY = 0;
-                    }
-                }
-
-                var canX = new DoubleAnimation
-                {
-                    From = st.CenterX,
-                    To = posX,
-                    Duration = new Duration(TimeSpan.FromSeconds(0.5)),
-                };
-                var canY = new DoubleAnimation
-                {
-                    From = st.CenterY,
-                    To = posY,
-                    Duration = new Duration(TimeSpan.FromSeconds(0.5)),
-                };
-
-                st.BeginAnimation(ScaleTransform.ScaleXProperty, an);
-                st.BeginAnimation(ScaleTransform.ScaleYProperty, an);
-
-                st.BeginAnimation(ScaleTransform.CenterXProperty, canX);
-                st.BeginAnimation(ScaleTransform.CenterYProperty, canY);
-            };
-            IsRoundMenuItem.Checked += (_, _) => RebindGameGrid();
-            IsRoundMenuItem.Unchecked += (_, _) => RebindGameGrid();
-
             _timer.Start();
         }
 
+        #region Events
+
+        private void NextButton_OnClick(object sender, RoutedEventArgs e) => NextGeneration();
+
+        private void StartButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _running = !_running;
+            StartButton.Content = _running ? "Stop" : "Start";
+        }
+
+        private void SaveMenuItem_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_game == null)
+                return;
+            _game.Export(Path.Join(Directory.GetCurrentDirectory(), "SaveState"));
+            MessageBox.Show("Game Saved");
+        }
+
+        private void CleanMenuItem_OnClick(object sender, RoutedEventArgs e)
+        {
+            _game?.Clean();
+        }
+
+        private void RandomMenuItem_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_game == null)
+                return;
+
+            _game = Game.Rand(_game.X, _game.Y);
+            RebindGameGrid();
+        }
+
+        private void LoadMenuItem_OnClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _game = Game.Import(Path.Join(Directory.GetCurrentDirectory(), "SaveState"));
+                DrawGameGrid();
+                MessageBox.Show("Game Loaded");
+                UpdateStats();
+            }
+            catch
+            {
+                MessageBox.Show("Cannot Load game state");
+            }
+        }
+
+        private void GameGrid_OnMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_drawing)
+                return;
+            if (e.OriginalSource is not Shape tmp)
+                return;
+
+            if (tmp.DataContext is not Cell cell || cell == _lastCell)
+                return;
+            cell.State = !cell.State;
+            _lastCell = cell;
+        }
+
+        private void GameGrid_OnMouseButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is not Shape tmp)
+                return;
+            if (tmp.DataContext is Cell cell)
+            {
+                cell.State = !cell.State;
+                _lastCell = cell;
+            }
+            _drawing = true;
+        }
+
+        private void ResizeButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var x = uint.Parse(GridX.Text);
+                var y = uint.Parse(GridY.Text);
+                if (_game == null)
+                    InitGame(x, y);
+                else
+                    ResizeGame(x, y);
+            }
+            catch
+            {
+                MessageBox.Show($"Grid size must be integers");
+            }
+        }
+
+        private void AnimationSpeedSlider_OnValueChanged(
+            object sender,
+            RoutedPropertyChangedEventArgs<double> e
+        )
+        {
+            _timer.Stop();
+            _timer.Interval = AnimationSpeedSlider.Maximum - AnimationSpeedSlider.Value;
+            _timer.Start();
+        }
+
+        private void IsRoundMenuItem_OnChecked(object sender, RoutedEventArgs e) =>
+            RebindGameGrid();
+
+        private void GameGrid_OnMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            var posX = e.GetPosition(GameGrid).X;
+            var posY = e.GetPosition(GameGrid).Y;
+
+            DoubleAnimation an;
+            if (e.Delta > 0)
+            {
+                an = new DoubleAnimation
+                {
+                    From = _st.ScaleX,
+                    To = _st.ScaleX * 2,
+                    Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+                };
+            }
+            else
+            {
+                if (!(_st.ScaleX / 2 < 1))
+                {
+                    an = new DoubleAnimation
+                    {
+                        From = _st.ScaleX,
+                        To = _st.ScaleX / 2,
+                        Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+                    };
+                }
+                else
+                {
+                    an = new DoubleAnimation
+                    {
+                        From = _st.ScaleX,
+                        To = 1,
+                        Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+                    };
+                    posX = 0;
+                    posY = 0;
+                }
+            }
+
+            var canX = new DoubleAnimation
+            {
+                From = _st.CenterX,
+                To = posX,
+                Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+            };
+            var canY = new DoubleAnimation
+            {
+                From = _st.CenterY,
+                To = posY,
+                Duration = new Duration(TimeSpan.FromSeconds(0.5)),
+            };
+
+            _st.BeginAnimation(ScaleTransform.ScaleXProperty, an);
+            _st.BeginAnimation(ScaleTransform.ScaleYProperty, an);
+
+            _st.BeginAnimation(ScaleTransform.CenterXProperty, canX);
+            _st.BeginAnimation(ScaleTransform.CenterYProperty, canY);
+        }
+
+        #endregion
+
+        #region ManipulateGameGrid
         private void NextGeneration()
         {
             if (_game == null)
@@ -231,6 +248,8 @@ namespace GameOfLife.UI
 
         private void UpdateStats()
         {
+            if (_game == null)
+                return;
             Dispatcher.Invoke(() =>
             {
                 StatsTextBlock.Text =
@@ -288,5 +307,6 @@ namespace GameOfLife.UI
                 cell.Fill = _cellFill;
             }
         }
+        #endregion
     }
 }
